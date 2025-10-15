@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <title>바코드 데모</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="container">
+        <img id="mainImage" src="./start.png" alt="start">
+    </div>
+
+    <script>
+        // --- Debug switch: set to false to silence logs in production ---
+        const DEBUG = true;
+        const dbg = (...args) => DEBUG && console.log('[kiosk]', ...args);
+
+        const pages = {
+            start: './start.png',
+            scan: './scan.png',
+            results: [
+                './result1.png',
+                './result2.png',
+                './result3.png',
+                './result4.png',
+                './result5.png',
+                './result6.png',
+                './result7.png',
+                './result8.png'
+            ]
+        };
+
+        let currentPage = 'start';
+        dbg('page', currentPage);
+
+        const mainImage = document.getElementById('mainImage');
+
+        // 클릭 시 다음 화면으로
+        mainImage.addEventListener('click', () => {
+            if (currentPage === 'start') {
+                currentPage = 'scan';
+                mainImage.src = pages.scan;
+                dbg('page', currentPage, '→ waiting for barcode');
+            } else if (currentPage.startsWith('result')) {
+                currentPage = 'start';
+                mainImage.src = pages.start;
+                dbg('page', currentPage);
+            }
+        });
+
+        // 바코드 리더기 입력 감지
+        let buffer = '';
+        document.addEventListener('keydown', (e) => {
+            if (currentPage !== 'scan') return;
+            if (e.key === 'Enter') {
+                dbg('enter pressed; finalized buffer =', buffer);
+                handleBarcode(buffer.trim());
+                buffer = '';
+            } else if (e.key.length === 1) { // only printable chars
+                buffer += e.key;
+                dbg('buffer +=', e.key, '→', buffer);
+            } else {
+                dbg('ignored key', e.key);
+            }
+        });
+
+        function handleBarcode(code) {
+            dbg('handleBarcode', code);
+            console.log('Scanned code:', code);
+            const codes = [
+                'RESULT-01-AXZ9',
+                'RESULT-02-BYT7',
+                'RESULT-03-CFR5',
+                'RESULT-04-DPL8',
+                'RESULT-05-EJK2',
+                'RESULT-06-FQW4',
+                'RESULT-07-GTN6',
+                'RESULT-08-HRV3'
+            ];
+
+            const idx = codes.indexOf(code);
+            if (idx !== -1) {
+                mainImage.src = pages.results[idx];
+                currentPage = 'result-' + (idx + 1);
+            } else {
+                alert('인식할 수 없는 바코드입니다.');
+            }
+        }
+    </script>
+</body>
+
+</html>
