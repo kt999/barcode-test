@@ -16,6 +16,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
+            overflow: hidden;
         }
 
         #container {
@@ -24,6 +25,7 @@
             display: flex;
             justify-content: center;
             align-items: center;
+            position: relative;
         }
 
         img {
@@ -31,6 +33,108 @@
             height: 100%;
             object-fit: cover;
             cursor: pointer;
+            transition: opacity 0.5s ease-in-out, transform 0.3s ease;
+        }
+
+        /* 클릭/탭 시 파란 포커스/하이라이트 제거 */
+        * {
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        :focus,
+        :focus-visible,
+        img:focus,
+        #startButton:focus,
+        #startButton:focus-visible,
+        #restartButton:focus,
+        #restartButton:focus-visible {
+            outline: none;
+        }
+
+        .page-transition {
+            opacity: 0;
+            transform: scale(0.95);
+        }
+
+        .page-enter {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        #startButton {
+            position: absolute;
+            bottom: 172px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 394px;
+            height: 135px;
+            background-image: url('./start_btn_initial.png');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            z-index: 10;
+        }
+
+        #startButton:hover {
+            transform: translateX(-50%) scale(1.05);
+        }
+
+        #startButton:active {
+            transform: translateX(-50%) scale(0.95);
+        }
+
+        .button-clicked {
+            background-image: url('./start_btn_active.png') !important;
+            transform: translateX(-50%) scale(1.1) !important;
+        }
+
+        .fade-out {
+            opacity: 0;
+            transform: translateX(-50%) scale(1.2);
+        }
+
+        /* 시작 버튼 지연 노출용 상태 */
+        .start-button-hidden {
+            opacity: 0;
+            transform: translateX(-50%) scale(0.98);
+        }
+
+        /* 결과 페이지용 재시작 버튼 */
+        #restartButton {
+            position: absolute;
+            bottom: 75px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 387px;
+            height: 128px;
+            background-image: url('./restart_btn.png');
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            z-index: 11;
+            display: none;
+        }
+
+        #restartButton:hover {
+            transform: translateX(-50%) scale(1.05);
+        }
+
+        #restartButton:active {
+            transform: translateX(-50%) scale(0.95);
+        }
+
+        .restart-clicked {
+            transform: translateX(-50%) scale(1.1) !important;
+        }
+
+        /* 재시작 버튼 지연 노출용 상태 */
+        .restart-hidden {
+            opacity: 0;
+            transform: translateX(-50%) scale(0.98);
         }
     </style>
 </head>
@@ -38,6 +142,8 @@
 <body>
     <div id="container">
         <img id="mainImage" src="./start.png" alt="start">
+        <div id="startButton" class="start-button-hidden"></div>
+        <div id="restartButton" class="restart-hidden"></div>
     </div>
 
     <script>
@@ -64,17 +170,98 @@
         dbg('page', currentPage);
 
         const mainImage = document.getElementById('mainImage');
+        const startButton = document.getElementById('startButton');
+        const restartButton = document.getElementById('restartButton');
 
-        // 클릭 시 다음 화면으로
-        mainImage.addEventListener('click', () => {
+        // 초기 진입 시 시작 버튼 노출(배경 로드 직후 페이드 인)
+        function revealStartButtonIfNeeded() {
+            if (currentPage !== 'start') return;
+            startButton.style.display = 'block';
+            startButton.classList.remove('button-clicked', 'fade-out');
+            // 다음 프레임에 숨김 클래스 제거하여 트랜지션 유도
+            requestAnimationFrame(() => {
+                startButton.classList.remove('start-button-hidden');
+            });
+        }
+
+        // 페이지 전환 애니메이션 함수
+        function transitionToPage(newSrc, callback) {
+            mainImage.classList.add('page-transition');
+
+            setTimeout(() => {
+                mainImage.src = newSrc;
+                mainImage.classList.remove('page-transition');
+                mainImage.classList.add('page-enter');
+
+                setTimeout(() => {
+                    mainImage.classList.remove('page-enter');
+                    if (callback) callback();
+                }, 100);
+            }, 500);
+        }
+
+        // 메인 이미지 로드 후 시작 페이지라면 버튼 노출
+        if (currentPage === 'start') {
+            if (mainImage.complete) {
+                revealStartButtonIfNeeded();
+            } else {
+                mainImage.addEventListener('load', revealStartButtonIfNeeded, { once: true });
+            }
+        }
+
+        // 시작 버튼 클릭 이벤트
+        startButton.addEventListener('click', () => {
             if (currentPage === 'start') {
-                currentPage = 'scan';
-                mainImage.src = pages.scan;
-                dbg('page', currentPage, '→ waiting for barcode');
-            } else if (currentPage.startsWith('result')) {
-                currentPage = 'start';
-                mainImage.src = pages.start;
-                dbg('page', currentPage);
+                // 버튼 클릭 효과
+                startButton.classList.add('button-clicked');
+
+                setTimeout(() => {
+                    startButton.classList.add('fade-out');
+
+                    setTimeout(() => {
+                        currentPage = 'scan';
+                        startButton.style.display = 'none';
+                        transitionToPage(pages.scan, () => {
+                            dbg('page', currentPage, '→ waiting for barcode');
+                        });
+                    }, 300);
+                }, 200);
+            }
+        });
+
+        // 결과 페이지에서만 재시작 버튼 표시
+        function showRestartButton(show) {
+            restartButton.style.display = show ? 'block' : 'none';
+        }
+
+        // 메인 이미지 클릭으로는 결과 → 시작 이동을 막고, 재시작 버튼을 사용
+        mainImage.addEventListener('click', () => {
+            if (currentPage.startsWith('result')) {
+                // 결과 페이지에서는 이미지 클릭으로는 동작하지 않음
+                return;
+            }
+        });
+
+        // 재시작 버튼 클릭 이벤트: 잠깐 확대 후 시작 페이지로 전환
+        restartButton.addEventListener('click', () => {
+            if (currentPage.startsWith('result')) {
+                restartButton.classList.add('restart-clicked');
+                setTimeout(() => {
+                    currentPage = 'start';
+                    showRestartButton(false);
+                    // 배경 전환 먼저 → 완료 후 시작 버튼 자연스럽게 등장
+                    transitionToPage(pages.start, () => {
+                        restartButton.classList.remove('restart-clicked');
+                        // 버튼 상태 초기화 후 페이드 인
+                        startButton.style.display = 'block';
+                        startButton.classList.remove('button-clicked', 'fade-out');
+                        // 잠깐 지연을 줘서 배경이 완전히 보인 뒤 나타나게
+                        setTimeout(() => {
+                            startButton.classList.remove('start-button-hidden');
+                            dbg('page', currentPage);
+                        }, 50);
+                    });
+                }, 200);
             }
         });
 
@@ -110,8 +297,22 @@
 
             const idx = codes.indexOf(code);
             if (idx !== -1) {
-                mainImage.src = pages.results[idx];
                 currentPage = 'result-' + (idx + 1);
+                transitionToPage(pages.results[idx], () => {
+                    // 결과 페이지로 들어오면 시작 버튼은 숨김 상태 유지
+                    startButton.classList.add('start-button-hidden');
+                    startButton.style.display = 'none';
+                    // 결과 이미지가 다 노출된 후, 약간의 지연 뒤 재시작 버튼 페이드 인
+                    restartButton.classList.add('restart-hidden');
+                    showRestartButton(true);
+                    setTimeout(() => {
+                        // 다음 프레임에서 hidden 해제 → 트랜지션으로 자연스러운 등장
+                        requestAnimationFrame(() => {
+                            restartButton.classList.remove('restart-hidden');
+                        });
+                    }, 120);
+                    dbg('page', currentPage);
+                });
             } else {
                 alert('인식할 수 없는 바코드입니다.');
             }
